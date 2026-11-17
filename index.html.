@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring spotreby 4ka - 250 GB FUP</title>
+    <!-- Tailwind CSS pre moderný vzhľad -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js pre grafy -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-cyan-400">4ka 5G Internet - FUP Monitor</h1>
+            <p class="text-gray-400 text-sm mt-1">Nezávislý monitoring z routera ASUS RT-BE58U</p>
+        </header>
+
+        <!-- Karta s aktuálnym stavom -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center">
+                <p class="text-gray-400 text-sm">Celkovo spotrebované</p>
+                <p id="total-usage" class="text-3xl font-extrabold text-cyan-400 mt-2">-- GB</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center">
+                <p class="text-gray-400 text-sm">FUP Limit</p>
+                <p class="text-3xl font-extrabold text-white mt-2">250 GB</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center">
+                <p class="text-gray-400 text-sm">Zostáva do limitu</p>
+                <p id="remaining-fup" class="text-3xl font-extrabold text-green-400 mt-2">-- GB</p>
+            </div>
+        </div>
+
+        <!-- Graf -->
+        <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">Denná spotreba dát</h2>
+            <div class="relative h-80">
+                <canvas id="consumptionChart"></canvas>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-xs text-gray-500">
+            Posledná aktualizácia: <span id="last-update">nikdy</span>
+        </footer>
+    </div>
+
+    <script>
+        // Sem sa neskôr natiahnu dáta z routera / cloudu
+        fetch('data.json')
+            .then(response => response.json())
+            .then(data => {
+                // Tu prepojte dáta do grafu
+                document.getElementById('total-usage').innerText = data.total + ' GB';
+                document.getElementById('remaining-fup').innerText = (250 - data.total).toFixed(2) + ' GB';
+                document.getElementById('last-update').innerText = data.timestamp;
+                
+                // Konfiguracja grafu Chart.js (ukážková štruktúra)
+                const ctx = document.getElementById('consumptionChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels, // napr. ['Pondelok', 'Utorok', ...]
+                        datasets: [{
+                            label: 'Spotreba (GB)',
+                            data: data.values, // napr. [12.5, 8.2, ...]
+                            backgroundColor: '#22d3ee',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#374151' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }).catch(err => console.log("Čaká sa na prvé dáta z routera..."));
+    </script>
+</body>
+</html>
