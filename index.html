@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4ka 5G - Týždenný FUP Monitor</title>
+    <title>4ka 5G - FUP Monitor & Archív</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
@@ -18,6 +18,11 @@
         .card.warn p { color: #f59e0b; }
         .chart-box { background: #1e293b; padding: 18px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); margin-bottom: 16px; height: 290px; position: relative; }
         .chart-title { margin: 0 0 12px 0; font-size: 0.85rem; color: #94a3b8; text-align: center; }
+        .history-box { background: #1e293b; padding: 16px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); margin-bottom: 16px; }
+        .history-box h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+        .history-list { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; color: #cbd5e1; }
+        .history-list li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #334155; }
+        .history-list li:last-child { border-bottom: none; }
         .footer { font-size: 0.75rem; color: #64748b; text-align: center; line-height: 1.5; }
     </style>
 </head>
@@ -26,7 +31,7 @@
         <h1>4ka 5G - Týždenný FUP Monitor</h1>
         <div class="cards">
             <div class="card highlight">
-                <h3>Dnes</h3>
+                <h3>Dnes (Streda)</h3>
                 <p id="today-val">-- GB</p>
             </div>
             <div class="card">
@@ -40,8 +45,15 @@
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">Spotreba Pondelok až Nedeľa (automatický reset v nedeľu)</div>
+            <div class="chart-title">Denná spotreba (Po – Ne) s automatickým resetom v pondelok</div>
             <canvas id="weeklyChart"></canvas>
+        </div>
+
+        <div class="history-box">
+            <h3>Archív týždňov</h3>
+            <ul id="historyList" class="history-list">
+                <li><span>Aktuálny týždeň</span> <span id="current-week-history">-- GB</span></li>
+            </ul>
         </div>
 
         <div class="footer" id="timestamp">Načítavam dáta z routera...</div>
@@ -63,14 +75,19 @@
                 const limit = 250;
                 const left = Math.max(0, limit - weekTotal);
 
+                // Dynamický názov dnešného dňa v karte
+                const dayNames = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
+                document.querySelector('.card.highlight h3').innerText = 'Dnes (' + dayNames[todayIndex] + ')';
+
                 document.getElementById('today-val').innerText = todayVal.toFixed(2) + ' GB';
                 document.getElementById('week-val').innerText = weekTotal.toFixed(2) + ' GB';
+                document.getElementById('current-week-history').innerText = weekTotal.toFixed(2) + ' GB';
 
                 const leftEl = document.getElementById('left-val');
                 leftEl.innerText = left.toFixed(2) + ' GB';
                 if (left < 30) leftEl.parentElement.classList.add('warn');
 
-                document.getElementById('timestamp').innerText = 'Posledná aktualizácia: ' + (data.timestamp || 'Neznáme');
+                document.getElementById('timestamp').innerText = 'Posledná aktualizácia z routera: ' + (data.timestamp || 'Neznáme');
 
                 updateChart(weekDays, todayIndex);
             } catch (e) {
