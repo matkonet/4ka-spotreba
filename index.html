@@ -118,7 +118,7 @@
         </div>
         <div class="card">
             <h3>Zostáva z FUP</h3>
-            <div class="value">250.00 GB</div>
+            <div id="fup-left" class="value">250.00 GB</div>
         </div>
     </div>
 
@@ -146,17 +146,122 @@
                 <div id="today-tot" class="value">0.00 GB</div>
             </div>
         </div>
+    </div>
 
-        <div class="section-title">Týždenná štatistika (FUP limit 250 GB)</div>
+    <!-- ZÁLOŽKA 3: Mesiace -->
+    <div id="tab-mesiace" class="tab-content">
+        <div class="section-title">Mesačná štatistika</div>
         <div class="cards">
             <div class="card">
-                <h3>Download</h3>
-                <div id="week-down" class="value">0.00 GB</div>
+                <h3>Celkom za mesiac</h3>
+                <div id="month-tot" class="value">0.00 GB</div>
             </div>
+        </div>
+    </div>
+
+    <!-- ZÁLOŽKA 4: Roky -->
+    <div id="tab-roky" class="tab-content">
+        <div class="section-title">Ročná štatistika</div>
+        <div class="cards">
             <div class="card">
-                <h3>Upload</h3>
-                <div id="week-up" class="value">0.00 GB</div>
+                <h3>Celkom za rok</h3>
+                <div id="year-tot" class="value">0.00 GB</div>
             </div>
-            <div class="card">
-                <h3>Celkom</h3>
-                <div id="week
+        </div>
+    </div>
+
+    <div id="update-time">Posledná aktualizácia: Načítavam...</div>
+
+    <script>
+        // Prepínanie záložiek
+        function switchTab(evt, tabId) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        // Inicializácia grafu
+        const ctx = document.getElementById('fupChart').getContext('2d');
+        const fupChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Download', 'Upload'],
+                datasets: [{
+                    label: 'Spotreba (GB)',
+                    data: [0, 0],
+                    backgroundColor: ['#00b4d8', '#0077b6'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: '#1b263b' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Načítanie dát z GitHubu (data.json)
+        function fetchData() {
+            const jsonUrl = 'https://raw.githubusercontent.com/matkonet/4ka-spotreba/main/data.json?' + new Date().getTime();
+            
+            fetch(jsonUrl)
+                .then(response => response.json())
+                .then(data => {
+                    // Hlavné karty
+                    const down = parseFloat(data.download_gb) || 0;
+                    const up = parseFloat(data.upload_gb) || 0;
+                    const total = parseFloat(data.total_gb) || (down + up);
+
+                    document.getElementById('download-val').innerText = down.toFixed(2) + " GB";
+                    document.getElementById('upload-val').innerText = up.toFixed(2) + " GB";
+                    document.getElementById('total-val').innerText = total.toFixed(2) + " GB";
+                    
+                    // Zostáva z FUP (napr. limit 250 GB)
+                    const limit = 250;
+                    let remaining = limit - total;
+                    if (remaining < 0) remaining = 0;
+                    document.getElementById('fup-left').innerText = remaining.toFixed(2) + " GB";
+
+                    // Dnešné karty (orientačne priradené z aktuálneho stavu)
+                    document.getElementById('today-down').innerText = down.toFixed(2) + " GB";
+                    document.getElementById('today-up').innerText = up.toFixed(2) + " GB";
+                    document.getElementById('today-tot').innerText = total.toFixed(2) + " GB";
+
+                    document.getElementById('month-tot').innerText = total.toFixed(2) + " GB";
+                    document.getElementById('year-tot').innerText = total.toFixed(2) + " GB";
+
+                    // Čas aktualizácie
+                    document.getElementById('update-time').innerText = "Posledná aktualizácia: " + (data.timestamp || "Neznámy čas");
+
+                    // Aktualizácia grafu
+                    fupChart.data.datasets[0].data = [down, up];
+                    fupChart.update();
+                })
+                .catch(err => {
+                    console.error("Chyba pri načítaní dát:", err);
+                });
+        }
+
+        // Spustiť okamžite a potom každých 30 sekúnd
+        fetchData();
+        setInterval(fetchData, 30000);
+    </script>
+</body>
+</html>
