@@ -11,12 +11,37 @@
             text-align: center;
             padding: 20px;
         }
-        h1 { color: #00b4d8; }
+        h1 { color: #00b4d8; margin-bottom: 20px; }
+        
+        /* Záložky */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .tab-btn {
+            background-color: #1b263b;
+            color: #94a3b8;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background-color: #00b4d8;
+            color: #0d1b2a;
+        }
+
+        /* Karty */
         .cards {
             display: flex;
             justify-content: center;
             gap: 20px;
-            margin-top: 30px;
+            margin-top: 20px;
             flex-wrap: wrap;
         }
         .card {
@@ -26,8 +51,17 @@
             width: 220px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 10px; }
-        .card .value { font-size: 24px; font-weight: bold; color: #00b4d8; }
+        .card h3 { font-size: 13px; color: #94a3b8; margin-bottom: 10px; }
+        .card .value { font-size: 22px; font-weight: bold; color: #00b4d8; }
+
+        /* Obsah záložiek */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
         #update-time {
             margin-top: 40px;
             font-size: 13px;
@@ -39,45 +73,104 @@
 
     <h1>4ka 5G - FUP Monitor</h1>
 
-    <div class="cards">
-        <div class="card">
-            <h3>DOWNLOAD (Sťahovanie)</h3>
-            <div id="download-val" class="value">0.00 GB</div>
+    <!-- Navigačné záložky -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab-prehlad')">Prehľad</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-dni')">Dni</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-mesiace')">Mesiace</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-roky')">Roky</button>
+    </div>
+
+    <!-- Obsah: Prehľad -->
+    <div id="tab-prehlad" class="tab-content active">
+        <div class="cards">
+            <div class="card">
+                <h3>DOWNLOAD (Sťahovanie)</h3>
+                <div id="download-val" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>UPLOAD (Odosielanie)</h3>
+                <div id="upload-val" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>CELKOVÁ SPOTREBA</h3>
+                <div id="total-val" class="value">0.00 GB</div>
+            </div>
         </div>
-        <div class="card">
-            <h3>UPLOAD (Odosielanie)</h3>
-            <div id="upload-val" class="value">0.00 GB</div>
+    </div>
+
+    <!-- Obsah: Dni -->
+    <div id="tab-dni" class="tab-content">
+        <div class="cards">
+            <div class="card">
+                <h3>DNES</h3>
+                <div id="today-val" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>TÝŽDEŇ (250GB FUP)</h3>
+                <div class="value">0.00 GB</div>
+            </div>
         </div>
-        <div class="card">
-            <h3>CELKOVÁ SPOTREBA</h3>
-            <div id="total-val" class="value">0.00 GB</div>
+    </div>
+
+    <!-- Obsah: Mesiace -->
+    <div id="tab-mesiace" class="tab-content">
+        <div class="cards">
+            <div class="card"></div>
+                <h3>TENTO MESIAC</h3>
+                <div id="month-val" class="value">0.00 GB</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Obsah: Roky -->
+    <div id="tab-roky" class="tab-content">
+        <div class="cards">
+            <div class="card">
+                <h3>TENTO ROK</h3>
+                <div id="year-val" class="value">0.00 GB</div>
+            </div>
         </div>
     </div>
 
     <div id="update-time">Načítavam dáta...</div>
 
     <script>
+        function switchTab(evt, tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
         async function fetchData() {
             try {
-                // Pridat ?t=... aby prehliadač nesահoval starú cache verziu
                 const response = await fetch('data.json?t=' + new Date().getTime());
                 if (!response.ok) throw new Error('Chyba pri načítaní data.json');
                 
                 const data = await response.json();
 
-                // Podpora pre rôzne názvy kľúčov zo skriptu
                 const downMb = data.download_mb || data.rx_mb || 0;
                 const upMb = data.upload_mb || data.tx_mb || 0;
                 const totMb = data.total_mb || (downMb + upMb);
 
-                // Prepočet na GB s 2 desatinnými miestami
                 const downGb = (downMb / 1024).toFixed(2);
                 const upGb = (upMb / 1024).toFixed(2);
                 const totGb = (totMb / 1024).toFixed(2);
 
+                // Prehľad
                 document.getElementById('download-val').innerText = downGb + ' GB';
                 document.getElementById('upload-val').innerText = upGb + ' GB';
                 document.getElementById('total-val').innerText = totGb + ' GB';
+
+                // Dni / Mesiace / Roky (aktuálne prepojené na aktuálny stav z routera, kým si nerozšíriš históriu)
+                document.getElementById('today-val').innerText = downGb + ' GB';
+                document.getElementById('month-val').innerText = totGb + ' GB';
+                document.getElementById('year-val').innerText = totGb + ' GB';
                 
                 if (data.timestamp) {
                     document.getElementById('update-time').innerText = 'Posledná aktualizácia z routera: ' + data.timestamp;
@@ -89,7 +182,6 @@
         }
 
         fetchData();
-        // Obnovenie údajov každých 60 sekúnd automaticky
         setInterval(fetchData, 60000);
     </script>
 
