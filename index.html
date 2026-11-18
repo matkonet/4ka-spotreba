@@ -108,7 +108,45 @@
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             
             document.getElementById('tab-' + tabName).classList.add('active');
-            btn.classList.add('active');
+            if (btn) btn.classList.add('active');
+        }
+
+        let chartInstance = null;
+
+        function updateChart(values, todayIndex) {
+            const ctx = document.getElementById('weeklyChart');
+            if (!ctx) return;
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const barColors = values.map((_, idx) => idx === todayIndex ? '#38bdf8' : '#475569');
+
+            chartInstance = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'],
+                    datasets: [{
+                        label: 'Spotreba',
+                        data: values,
+                        backgroundColor: barColors,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 250, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} GB` } }
+                    }
+                }
+            });
         }
 
         async function loadData() {
@@ -125,7 +163,7 @@
                     timestampStr = data.timestamp || 'Neznáme';
                 }
             } catch (e) {
-                console.error('Chyba načítania JSON:', e);
+                console.error('Chyba pri načítaní JSON:', e);
             }
 
             const now = new Date();
@@ -135,79 +173,4 @@
             const limit = 250;
             const left = Math.max(0, limit - weekTotal);
 
-            const options = { weekday: 'long', day: 'numeric', month: 'numeric' };
-            let dateStr = now.toLocaleDateString('sk-SK', options);
-            dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-            document.getElementById('today-title').innerText = 'Dnes (' + dateStr + ')';
-
-            document.getElementById('today-val').innerText = todayVal.toFixed(2) + ' GB';
-            document.getElementById('week-val').innerText = weekTotal.toFixed(2) + ' GB';
-
-            const leftEl = document.getElementById('left-val');
-            leftEl.innerText = left.toFixed(2) + ' GB';
-            if (left < 30) leftEl.parentElement.classList.add('warn');
-
-            document.getElementById('timestamp').innerText = 'Posledná aktualizácia z routera: ' + timestampStr;
-
-            // Lokálny archív
-            let history = JSON.parse(localStorage.getItem('4ka_history') || '{}');
-            if (!history.days) history.days = {};
-            if (!history.months) history.months = {};
-            if (!history.years) history.years = {};
-
-            const todayKey = now.toISOString().split('T')[0];
-            const monthKey = now.toISOString().slice(0, 7);
-            const yearKey = now.getFullYear().toString();
-
-            history.days[todayKey] = todayVal;
-
-            let monthSum = 0;
-            for (let d in history.days) {
-                if (d.startsWith(monthKey)) monthSum += history.days[d];
-            }
-            history.months[monthKey] = monthSum;
-
-            let yearSum = 0;
-            for (let m in history.months) {
-                if (m.startsWith(yearKey)) yearSum += history.months[m];
-            }
-            history.years[yearKey] = yearSum;
-
-            localStorage.setItem('4ka_history', JSON.stringify(history));
-
-            renderArchive(history);
-            updateChart(weekDays, todayIndex);
-        }
-
-        function renderArchive(history) {
-            const daysList = document.getElementById('daysList');
-            daysList.innerHTML = '';
-            Object.keys(history.days).sort().reverse().forEach(date => {
-                daysList.innerHTML += `<li><span>${date}</span> <strong>${history.days[date].toFixed(2)} GB</strong></li>`;
-            });
-
-            const monthsList = document.getElementById('monthsList');
-            monthsList.innerHTML = '';
-            Object.keys(history.months).sort().reverse().forEach(month => {
-                monthsList.innerHTML += `<li><span>${month}</span> <strong>${history.months[month].toFixed(2)} GB</strong></li>`;
-            });
-
-            const yearsList = document.getElementById('yearsList');
-            yearsList.innerHTML = '';
-            Object.keys(history.years).sort().reverse().forEach(year => {
-                yearsList.innerHTML += `<li><span>Rok ${year}</span> <strong>${history.years[year].toFixed(2)} GB</strong></li>`;
-            });
-        }
-
-        let chart;
-        function updateChart(values, todayIndex) {
-            const ctx = document.getElementById('weeklyChart').getContext('2d');
-            if (chart) chart.destroy();
-
-            const barColors = values.map((_, idx) => idx === todayIndex ? '#38bdf8' : '#475569');
-
-            chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'],
-                    datasets: [{
+            const options = { weekday: 'long', day: 'numeric
