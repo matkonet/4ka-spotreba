@@ -3,77 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4ka 5G Internet - FUP Monitor</title>
+    <title>4ka 5G - Týždenný FUP Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 600px; }
-        h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; color: #38bdf8; }
-        .cards { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 25px; }
-        @media(min-width: 480px) { .cards { grid-template-columns: repeat(3, 1fr); } }
-        .card { background: #1e293b; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
-        .card h3 { margin: 0 0 5px 0; font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; }
-        .card p { margin: 0; font-size: 1.4rem; font-weight: bold; color: #f8fafc; }
-        .chart-container { background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); position: relative; height: 300px; }
-        .footer { margin-top: 15px; font-size: 0.75rem; color: #64748b; text-align: center; }
+        .container { width: 100%; max-width: 680px; }
+        h1 { font-size: 1.4rem; text-align: center; margin-bottom: 20px; color: #38bdf8; }
+        .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        @media(min-width: 540px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+        .card { background: #1e293b; padding: 14px 10px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        .card h3 { margin: 0 0 6px 0; font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card p { margin: 0; font-size: 1.25rem; font-weight: bold; color: #f8fafc; }
+        .card.highlight p { color: #38bdf8; }
+        .card.warn p { color: #f59e0b; }
+        .chart-box { background: #1e293b; padding: 18px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); margin-bottom: 16px; height: 290px; position: relative; }
+        .chart-title { margin: 0 0 12px 0; font-size: 0.85rem; color: #94a3b8; text-align: center; }
+        .footer { font-size: 0.75rem; color: #64748b; text-align: center; line-height: 1.5; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>4ka 5G - FUP Monitor</h1>
+        <h1>4ka 5G - Týždenný FUP Monitor</h1>
         <div class="cards">
-            <div class="card">
-                <h3>Spotrebované</h3>
-                <p id="total-val">-- GB</p>
+            <div class="card highlight">
+                <h3>Dnes</h3>
+                <p id="today-val">-- GB</p>
             </div>
             <div class="card">
-                <h3>FUP Limit</h3>
-                <p>250 GB</p>
+                <h3>Celkovo týždeň</h3>
+                <p id="week-val">-- GB</p>
             </div>
             <div class="card">
-                <h3>Zostáva</h3>
+                <h3>Zostáva z 250 GB</h3>
                 <p id="left-val">-- GB</p>
             </div>
         </div>
-        <div class="chart-container">
-            <canvas id="fupChart"></canvas>
+
+        <div class="chart-box">
+            <div class="chart-title">Spotreba Pondelok až Nedeľa (automatický reset v nedeľu)</div>
+            <canvas id="weeklyChart"></canvas>
         </div>
-        <div class="footer" id="timestamp">Naposledy aktualizované: načítavam...</div>
+
+        <div class="footer" id="timestamp">Načítavam dáta z routera...</div>
     </div>
 
     <script>
         async function loadData() {
             try {
                 const response = await fetch('data.json?t=' + new Date().getTime());
-                if (!response.ok) throw new Error('Dáta nie sú dostupné');
+                if (!response.ok) throw new Error();
                 const data = await response.json();
-                
-                const total = data.total || 0;
+
+                const weekDays = data.week_days || [0, 0, 0, 0, 0, 0, 0];
+                const jsDay = new Date().getDay(); // 0 = Nedeľa, 1 = Pondelok...
+                const todayIndex = jsDay === 0 ? 6 : jsDay - 1;
+                const todayVal = weekDays[todayIndex] || 0;
+
+                const weekTotal = data.week_total || 0;
                 const limit = 250;
-                const left = Math.max(0, limit - total);
+                const left = Math.max(0, limit - weekTotal);
 
-                document.getElementById('total-val').innerText = total + ' GB';
-                document.getElementById('left-val').innerText = left.toFixed(2) + ' GB';
-                document.getElementById('timestamp').innerText = 'Naposledy aktualizované z routera: ' + (data.timestamp || 'Neznáme');
+                document.getElementById('today-val').innerText = todayVal.toFixed(2) + ' GB';
+                document.getElementById('week-val').innerText = weekTotal.toFixed(2) + ' GB';
 
-                updateChart(data.labels || ['Dnes'], data.values || [total]);
+                const leftEl = document.getElementById('left-val');
+                leftEl.innerText = left.toFixed(2) + ' GB';
+                if (left < 30) leftEl.parentElement.classList.add('warn');
+
+                document.getElementById('timestamp').innerText = 'Posledná aktualizácia: ' + (data.timestamp || 'Neznáme');
+
+                updateChart(weekDays, todayIndex);
             } catch (e) {
-                console.error('Chyba pri načítaní dát:', e);
+                console.error('Chyba načítania:', e);
             }
         }
 
-        let myChart;
-        function updateChart(labels, values) {
-            const ctx = document.getElementById('fupChart').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
+        let chart;
+        function updateChart(values, todayIndex) {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            if (chart) chart.destroy();
+
+            const barColors = values.map((_, idx) => idx === todayIndex ? '#38bdf8' : '#475569');
+
+            chart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'],
                     datasets: [{
                         label: 'Spotreba (GB)',
                         data: values,
-                        backgroundColor: '#38bdf8',
+                        backgroundColor: barColors,
                         borderRadius: 6
                     }]
                 },
@@ -84,12 +103,20 @@
                         y: { beginAtZero: true, max: 250, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
                         x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} GB`
+                            }
+                        }
+                    }
                 }
             });
         }
 
         loadData();
+        setInterval(loadData, 60000);
     </script>
 </body>
 </html>
