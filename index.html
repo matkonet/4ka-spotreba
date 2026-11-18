@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>4ka 5G - FUP Monitor</title>
-    <!-- Knižnica Chart.js pre vykreslenie grafu -->
+    <!-- Knižnica Chart.js pre graf -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -44,7 +44,7 @@
             display: flex;
             justify-content: center;
             gap: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
         }
         .card {
@@ -57,7 +57,7 @@
         .card h3 { font-size: 11px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
         .card .value { font-size: 18px; font-weight: bold; color: #00b4d8; }
 
-        /* Obsah záložiek */
+        /* Obsah záložiek (štandardne skryté, active ich zobrazí) */
         .tab-content {
             display: none;
         }
@@ -78,7 +78,7 @@
         .section-title {
             color: #94a3b8;
             font-size: 14px;
-            margin-bottom: 15px;
+            margin: 20px 0 10px 0;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -102,7 +102,7 @@
         <button class="tab-btn" onclick="switchTab(event, 'tab-roky')">Roky</button>
     </div>
 
-    <!-- Horné karty pre okamžitý prehľad -->
+    <!-- Horné hlavné karty (aktuálny stav) -->
     <div class="cards">
         <div class="card">
             <h3>Download</h3>
@@ -122,5 +122,156 @@
         </div>
     </div>
 
-    <!-- Obsah: Prehľad + Graf -->
-    <div id="
+    <!-- ZÁLOŽKA 1: Prehľad + Graf -->
+    <div id="tab-prehlad" class="tab-content active">
+        <div class="chart-container">
+            <canvas id="fupChart"></canvas>
+        </div>
+    </div>
+
+    <!-- ZÁLOŽKA 2: Dni -->
+    <div id="tab-dni" class="tab-content">
+        <div class="section-title">Dnešná štatistika</div>
+        <div class="cards">
+            <div class="card">
+                <h3>Download</h3>
+                <div id="today-down" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Upload</h3>
+                <div id="today-up" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Celkom</h3>
+                <div id="today-tot" class="value">0.00 GB</div>
+            </div>
+        </div>
+
+        <div class="section-title">Týždenná štatistika (FUP limit 250 GB)</div>
+        <div class="cards">
+            <div class="card">
+                <h3>Download</h3>
+                <div id="week-down" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Upload</h3>
+                <div id="week-up" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Celkom</h3>
+                <div id="week-tot" class="value">0.00 GB</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ZÁLOŽKA 3: Mesiace -->
+    <div id="tab-mesiace" class="tab-content">
+        <div class="section-title">Štatistika za tento mesiac</div>
+        <div class="cards">
+            <div class="card">
+                <h3>Download</h3>
+                <div id="month-down" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Upload</h3>
+                <div id="month-up" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Celkom</h3>
+                <div id="month-tot" class="value">0.00 GB</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ZÁLOŽKA 4: Roky -->
+    <div id="tab-roky" class="tab-content">
+        <div class="section-title">Štatistika za tento rok</div>
+        <div class="cards">
+            <div class="card">
+                <h3>Download</h3>
+                <div id="year-down" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Upload</h3>
+                <div id="year-up" class="value">0.00 GB</div>
+            </div>
+            <div class="card">
+                <h3>Celkom</h3>
+                <div id="year-tot" class="value">0.00 GB</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="update-time">Načítavam dáta...</div>
+
+    <script>
+        // Inicializácia grafu
+        const ctx = document.getElementById('fupChart').getContext('2d');
+        const fupChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'],
+                datasets: [
+                    {
+                        label: 'Download (GB)',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#00b4d8',
+                        backgroundColor: 'rgba(0, 180, 216, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Upload (GB)',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#f72585',
+                        backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // Funkcia pre prepínanie záložiek
+        function switchTab(evt, tabName) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        // Načítanie dát z JSON
+        async function fetchData() {
+            try {
+                const response = await fetch('data.json?t=' + new Date().getTime());
+                if (!response.ok) throw new Error('Chyba pri načítaní data.json');
+                
+                const data = await response.json();
+
+                const downMb = data.download_mb || data.rx_mb || 0;
+                const upMb = data.upload_mb || data.tx_mb || 0;
+                const totMb = data.total_mb || (downMb + upMb);
+
+                const downGb = (downMb / 1024).toFixed(2);
+                const upGb = (upMb / 1024).toFixed(2);
+                const totGb = (totMb / 1024).toFixed(2);
+
+                // Hlavné karty
+                document.getElementById('download-val').innerText = downGb + ' GB';
+                document.getElementById('upload-val').innerText = upGb + ' GB';
+                document.getElementById('total-val').innerText = totGb + ' GB';
+
+                // Dni
+                document.getElementById('today-down').innerText =
