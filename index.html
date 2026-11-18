@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>4ka 5G - FUP Monitor</title>
-    <!-- Knižnica Chart.js pre graf -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -15,13 +14,13 @@
             margin: 0;
         }
         h1 { color: #00b4d8; margin-bottom: 20px; }
-        
-        /* Záložky */
+
         .tabs {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin-bottom: 25px;
+            flex-wrap: wrap;
         }
         .tab-btn {
             background-color: #1b263b;
@@ -32,14 +31,13 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 14px;
-            transition: 0.3s;
+            transition: 0.2s;
         }
         .tab-btn.active {
             background-color: #00b4d8;
             color: #0d1b2a;
         }
 
-        /* Karty */
         .cards {
             display: flex;
             justify-content: center;
@@ -57,15 +55,9 @@
         .card h3 { font-size: 11px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
         .card .value { font-size: 18px; font-weight: bold; color: #00b4d8; }
 
-        /* Obsah záložiek */
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        /* Kontajner pre graf */
         .chart-container {
             background-color: #1b263b;
             padding: 20px;
@@ -78,9 +70,43 @@
         .section-title {
             color: #94a3b8;
             font-size: 14px;
-            margin: 20px 0 10px 0;
+            margin: 22px 0 10px 0;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+
+        .history-list {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .history-row {
+            background-color: #1b263b;
+            padding: 12px 18px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .history-row.latest {
+            border-left: 4px solid #00b4d8;
+        }
+        .history-label {
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+        .history-stats {
+            display: flex;
+            gap: 18px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .history-stats strong {
+            color: #00b4d8;
         }
 
         #update-time {
@@ -94,30 +120,29 @@
 
     <h1>4ka 5G - FUP Monitor</h1>
 
-    <!-- Navigačné záložky -->
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab(event, 'tab-prehlad')">Prehľad</button>
-        <button class="tab-btn" onclick="switchTab(event, 'tab-dni')">Dni</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-dni')">Dni & Týždne</button>
         <button class="tab-btn" onclick="switchTab(event, 'tab-mesiace')">Mesiace</button>
         <button class="tab-btn" onclick="switchTab(event, 'tab-roky')">Roky</button>
     </div>
 
-    <!-- Horné hlavné karty (aktuálny stav) -->
+    <!-- Aktuálny deň (najnovší) v hlavných kartách -->
     <div class="cards">
         <div class="card">
-            <h3>Download</h3>
+            <h3>Dnes Download</h3>
             <div id="download-val" class="value">0.00 GB</div>
         </div>
         <div class="card">
-            <h3>Upload</h3>
+            <h3>Dnes Upload</h3>
             <div id="upload-val" class="value">0.00 GB</div>
         </div>
         <div class="card">
-            <h3>Celková spotreba</h3>
+            <h3>Dnes Celkom</h3>
             <div id="total-val" class="value">0.00 GB</div>
         </div>
         <div class="card">
-            <h3>Zostáva z FUP</h3>
+            <h3>Zostáva z FUP (250 GB)</h3>
             <div id="fup-left" class="value">250.00 GB</div>
         </div>
     </div>
@@ -129,137 +154,153 @@
         </div>
     </div>
 
-    <!-- ZÁLOŽKA 2: Dni -->
+    <!-- ZÁLOŽKA 2: Dni a Týždne (najnovšie navrchu) -->
     <div id="tab-dni" class="tab-content">
-        <div class="section-title">Dnešná štatistika</div>
-        <div class="cards">
-            <div class="card">
-                <h3>Download</h3>
-                <div id="today-down" class="value">0.00 GB</div>
-            </div>
-            <div class="card">
-                <h3>Upload</h3>
-                <div id="today-up" class="value">0.00 GB</div>
-            </div>
-            <div class="card">
-                <h3>Celkom</h3>
-                <div id="today-tot" class="value">0.00 GB</div>
-            </div>
-        </div>
+        <div class="section-title">Štatistika po dňoch (najnovší deň navrchu)</div>
+        <div id="days-list" class="history-list"></div>
+
+        <div class="section-title">Týždenná štatistika (nuluje sa v pondelok o 0:00, minulosť ostáva)</div>
+        <div id="weeks-list" class="history-list"></div>
     </div>
 
     <!-- ZÁLOŽKA 3: Mesiace -->
     <div id="tab-mesiace" class="tab-content">
         <div class="section-title">Mesačná štatistika</div>
-        <div class="cards">
-            <div class="card">
-                <h3>Celkom za mesiac</h3>
-                <div id="month-tot" class="value">0.00 GB</div>
-            </div>
-        </div>
+        <div id="months-list" class="history-list"></div>
     </div>
 
     <!-- ZÁLOŽKA 4: Roky -->
     <div id="tab-roky" class="tab-content">
         <div class="section-title">Ročná štatistika</div>
-        <div class="cards">
-            <div class="card">
-                <h3>Celkom za rok</h3>
-                <div id="year-tot" class="value">0.00 GB</div>
-            </div>
-        </div>
+        <div id="years-list" class="history-list"></div>
     </div>
 
     <div id="update-time">Posledná aktualizácia: Načítavam...</div>
 
     <script>
-        // Prepínanie záložiek
         function switchTab(evt, tabId) {
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(c => c.classList.remove('active'));
-
-            const buttons = document.querySelectorAll('.tab-btn');
-            buttons.forEach(b => b.classList.remove('active'));
-
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             evt.currentTarget.classList.add('active');
         }
 
-        // Inicializácia grafu
+        function formatMonthSk(ym) {
+            const parts = ym.split('-');
+            if (parts.length !== 2) return ym;
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const d = new Date(year, month, 1);
+            return d.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+        }
+
+        function renderList(containerId, items, labelFormatter) {
+            const container = document.getElementById(containerId);
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="history-row"><span class="history-label">Zatiaľ žiadne záznamy</span></div>';
+                return;
+            }
+            container.innerHTML = items.map((item, idx) => {
+                const down = (parseFloat(item.download_gb) || 0).toFixed(2);
+                const up = (parseFloat(item.upload_gb) || 0).toFixed(2);
+                const tot = (parseFloat(item.total_gb) || 0).toFixed(2);
+                const label = labelFormatter ? labelFormatter(item.key) : item.key;
+                return `
+                    <div class="history-row ${idx === 0 ? 'latest' : ''}">
+                        <span class="history-label">${label}</span>
+                        <div class="history-stats">
+                            <span>Down: <strong>${down} GB</strong></span>
+                            <span>Up: <strong>${up} GB</strong></span>
+                            <span>Celkom: <strong>${tot} GB</strong></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
         const ctx = document.getElementById('fupChart').getContext('2d');
         const fupChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Download', 'Upload'],
-                datasets: [{
-                    label: 'Spotreba (GB)',
-                    data: [0, 0],
-                    backgroundColor: ['#00b4d8', '#0077b6'],
-                    borderRadius: 6
-                }]
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Download (GB)',
+                        data: [],
+                        backgroundColor: '#00b4d8',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Upload (GB)',
+                        data: [],
+                        backgroundColor: '#0077b6',
+                        borderRadius: 4
+                    }
+                ]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: { color: '#94a3b8' },
-                        grid: { color: '#1b263b' }
+                        grid: { color: '#273853' }
                     },
                     x: {
                         ticks: { color: '#94a3b8' },
                         grid: { display: false }
                     }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } }
                 }
             }
         });
 
-        // Načítanie dát z GitHubu (data.json)
         function fetchData() {
-            const jsonUrl = 'https://raw.githubusercontent.com/matkonet/4ka-spotreba/main/data.json?' + new Date().getTime();
-            
-            fetch(jsonUrl)
-                .then(response => response.json())
-                .then(data => {
-                    // Hlavné karty
-                    const down = parseFloat(data.download_gb) || 0;
-                    const up = parseFloat(data.upload_gb) || 0;
-                    const total = parseFloat(data.total_gb) || (down + up);
+            const url = 'https://raw.githubusercontent.com/matkonet/4ka-spotreba/main/history.json?' + Date.now();
+
+            fetch(url)
+                .then(res => res.json())
+                .then(hist => {
+                    const days = hist.days || [];
+                    const weeks = hist.weeks || [];
+                    const months = hist.months || [];
+                    const years = hist.years || [];
+
+                    // Dnešný deň je prvý (najnovší)
+                    const today = days[0] || { download_gb: 0, upload_gb: 0, total_gb: 0 };
+                    const down = parseFloat(today.download_gb) || 0;
+                    const up = parseFloat(today.upload_gb) || 0;
+                    const total = parseFloat(today.total_gb) || (down + up);
 
                     document.getElementById('download-val').innerText = down.toFixed(2) + " GB";
                     document.getElementById('upload-val').innerText = up.toFixed(2) + " GB";
                     document.getElementById('total-val').innerText = total.toFixed(2) + " GB";
-                    
-                    // Zostáva z FUP (napr. limit 250 GB)
+
+                    // Zostáva z FUP (napr. z aktuálneho mesiaca alebo dňa, tu z aktuálneho mesiaca)
+                    const curMonthTotal = months[0] ? (parseFloat(months[0].total_gb) || 0) : total;
                     const limit = 250;
-                    let remaining = limit - total;
-                    if (remaining < 0) remaining = 0;
-                    document.getElementById('fup-left').innerText = remaining.toFixed(2) + " GB";
+                    const rem = Math.max(0, limit - curMonthTotal);
+                    document.getElementById('fup-left').innerText = rem.toFixed(2) + " GB";
 
-                    // Dnešné karty (orientačne priradené z aktuálneho stavu)
-                    document.getElementById('today-down').innerText = down.toFixed(2) + " GB";
-                    document.getElementById('today-up').innerText = up.toFixed(2) + " GB";
-                    document.getElementById('today-tot').innerText = total.toFixed(2) + " GB";
+                    renderList('days-list', days, k => k);
+                    renderList('weeks-list', weeks, k => `Týždeň ${k}`);
+                    renderList('months-list', months, formatMonthSk);
+                    renderList('years-list', years, k => `Rok ${k}`);
 
-                    document.getElementById('month-tot').innerText = total.toFixed(2) + " GB";
-                    document.getElementById('year-tot').innerText = total.toFixed(2) + " GB";
-
-                    // Čas aktualizácie
-                    document.getElementById('update-time').innerText = "Posledná aktualizácia: " + (data.timestamp || "Neznámy čas");
-
-                    // Aktualizácia grafu
-                    fupChart.data.datasets[0].data = [down, up];
+                    // Graf posledných dní (od najstaršieho po najnovší pre prirodzený priebeh)
+                    const chartDays = [...days].slice(0, 14).reverse();
+                    fupChart.data.labels = chartDays.map(d => d.key);
+                    fupChart.data.datasets[0].data = chartDays.map(d => parseFloat(d.download_gb) || 0);
+                    fupChart.data.datasets[1].data = chartDays.map(d => parseFloat(d.upload_gb) || 0);
                     fupChart.update();
+
+                    document.getElementById('update-time').innerText = "Posledná aktualizácia: " + (hist.timestamp || "Neznámy čas");
                 })
-                .catch(err => {
-                    console.error("Chyba pri načítaní dát:", err);
-                });
+                .catch(err => console.error("Chyba pri načítaní histórie:", err));
         }
 
-        // Spustiť okamžite a potom každých 30 sekúnd
         fetchData();
         setInterval(fetchData, 30000);
     </script>
