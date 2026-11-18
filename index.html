@@ -128,7 +128,6 @@
         <button class="tab-btn" onclick="switchTab(event, 'tab-roky')">Roky</button>
     </div>
 
-    <!-- Aktuálny týždeň + odpočet od 250 GB -->
     <div class="cards">
         <div class="card">
             <h3>Tento týždeň Download</h3>
@@ -148,14 +147,12 @@
         </div>
     </div>
 
-    <!-- ZÁLOŽKA 1: Prehľad + Graf -->
     <div id="tab-prehlad" class="tab-content active">
         <div class="chart-container">
             <canvas id="fupChart"></canvas>
         </div>
     </div>
 
-    <!-- ZÁLOŽKA 2: Dni a Týždne (najnovšie navrchu) -->
     <div id="tab-dni" class="tab-content">
         <div class="section-title">Štatistika po dňoch (najnovší deň navrchu)</div>
         <div id="days-list" class="history-list"></div>
@@ -164,13 +161,11 @@
         <div id="weeks-list" class="history-list"></div>
     </div>
 
-    <!-- ZÁLOŽKA 3: Mesiace (súčet týždňov za kalendárny mesiac) -->
     <div id="tab-mesiace" class="tab-content">
         <div class="section-title">Mesačná štatistika (súčet týždňov za kalendárny mesiac)</div>
         <div id="months-list" class="history-list"></div>
     </div>
 
-    <!-- ZÁLOŽKA 4: Roky -->
     <div id="tab-roky" class="tab-content">
         <div class="section-title">Ročná štatistika</div>
         <div id="years-list" class="history-list"></div>
@@ -193,6 +188,34 @@
             const month = parseInt(parts[1], 10) - 1;
             const d = new Date(year, month, 1);
             return d.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+        }
+
+        function formatWeekDates(weekKey) {
+            const match = /^(\d{4})-W(\d{1,2})$/.exec(weekKey);
+            if (!match) return weekKey;
+
+            const year = parseInt(match[1], 10);
+            const week = parseInt(match[2], 10);
+
+            const jan4 = new Date(year, 0, 4);
+            const jan4Day = jan4.getDay() || 7;
+            const week1Monday = new Date(year, 0, 4 - (jan4Day - 1));
+
+            const monday = new Date(week1Monday);
+            monday.setDate(week1Monday.getDate() + (week - 1) * 7);
+
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            const startDay = monday.getDate();
+            const startMonth = monday.getMonth() + 1;
+            const endDay = sunday.getDate();
+            const endMonth = sunday.getMonth() + 1;
+
+            if (startMonth === endMonth) {
+                return `${startDay}-${endDay}.${endMonth}`;
+            }
+            return `${startDay}.${startMonth} - ${endDay}.${endMonth}`;
         }
 
         function renderList(containerId, items, labelFormatter, extraFormatter) {
@@ -272,7 +295,6 @@
                     const years = hist.years || [];
                     const limit = parseFloat(hist.fup_limit_gb) || 250;
 
-                    // Aktuálny týždeň je prvý v zozname (najnovší)
                     const curWeek = weeks[0] || { download_gb: 0, upload_gb: 0, total_gb: 0 };
                     const wDown = parseFloat(curWeek.download_gb) || 0;
                     const wUp = parseFloat(curWeek.upload_gb) || 0;
@@ -288,7 +310,7 @@
                     renderList(
                         'weeks-list',
                         weeks,
-                        k => `Týždeň ${k}`,
+                        formatWeekDates,
                         item => {
                             const t = parseFloat(item.total_gb) || 0;
                             const left = Math.max(0, limit - t).toFixed(2);
