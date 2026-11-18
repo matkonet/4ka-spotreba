@@ -90,7 +90,6 @@
         }
 
         loadData();
-        setInterval(loadData, 60000); // Obnoví dáta každú minútu
     </script>
 </body>
 </html>
