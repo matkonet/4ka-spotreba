@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4ka 5G - FUP Monitor & Archív</title>
+    <title>4ka 5G - Týždenný FUP Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
@@ -21,7 +21,7 @@
         .history-box { background: #1e293b; padding: 16px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); margin-bottom: 16px; }
         .history-box h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 6px; }
         .history-list { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; color: #cbd5e1; }
-        .history-list li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #334155; }
+        .history-list li { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #334155; }
         .history-list li:last-child { border-bottom: none; }
         .footer { font-size: 0.75rem; color: #64748b; text-align: center; line-height: 1.5; }
     </style>
@@ -31,7 +31,7 @@
         <h1>4ka 5G - Týždenný FUP Monitor</h1>
         <div class="cards">
             <div class="card highlight">
-                <h3>Dnes (Streda)</h3>
+                <h3 id="today-title">Dnes</h3>
                 <p id="today-val">-- GB</p>
             </div>
             <div class="card">
@@ -50,9 +50,9 @@
         </div>
 
         <div class="history-box">
-            <h3>Archív týždňov</h3>
-            <ul id="historyList" class="history-list">
-                <li><span>Aktuálny týždeň</span> <span id="current-week-history">-- GB</span></li>
+            <h3>Prehľad dní tohto týždňa</h3>
+            <ul id="dailyList" class="history-list">
+                <!-- Sem sa dynamicky načítajú jednotlivé dni -->
             </ul>
         </div>
 
@@ -67,7 +67,8 @@
                 const data = await response.json();
 
                 const weekDays = data.week_days || [0, 0, 0, 0, 0, 0, 0];
-                const jsDay = new Date().getDay(); // 0 = Nedeľa, 1 = Pondelok...
+                const now = new Date();
+                const jsDay = now.getDay(); // 0 = Nedeľa, 1 = Pondelok...
                 const todayIndex = jsDay === 0 ? 6 : jsDay - 1;
                 const todayVal = weekDays[todayIndex] || 0;
 
@@ -75,19 +76,32 @@
                 const limit = 250;
                 const left = Math.max(0, limit - weekTotal);
 
-                // Dynamický názov dnešného dňa v karte
-                const dayNames = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
-                document.querySelector('.card.highlight h3').innerText = 'Dnes (' + dayNames[todayIndex] + ')';
+                // Formátovanie dnešného dátumu (napr. Streda 18.11.)
+                const options = { weekday: 'long', day: 'numeric', month: 'numeric' };
+                let dateStr = now.toLocaleDateString('sk-SK', options);
+                // Prvé písmeno veľké
+                dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+                document.getElementById('today-title').innerText = 'Dnes (' + dateStr + ')';
 
                 document.getElementById('today-val').innerText = todayVal.toFixed(2) + ' GB';
                 document.getElementById('week-val').innerText = weekTotal.toFixed(2) + ' GB';
-                document.getElementById('current-week-history').innerText = weekTotal.toFixed(2) + ' GB';
 
                 const leftEl = document.getElementById('left-val');
                 leftEl.innerText = left.toFixed(2) + ' GB';
                 if (left < 30) leftEl.parentElement.classList.add('warn');
 
                 document.getElementById('timestamp').innerText = 'Posledná aktualizácia z routera: ' + (data.timestamp || 'Neznáme');
+
+                // Vykreslenie zoznamu dní v týždni
+                const dayNamesFull = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
+                const dailyListEl = document.getElementById('dailyList');
+                dailyListEl.innerHTML = '';
+                
+                weekDays.forEach((val, idx) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${dayNamesFull[idx]} ${idx === todayIndex ? '(Dnes)' : ''}</span> <strong>${val.toFixed(2)} GB</strong>`;
+                    dailyListEl.appendChild(li);
+                });
 
                 updateChart(weekDays, todayIndex);
             } catch (e) {
@@ -107,7 +121,7 @@
                 data: {
                     labels: ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'],
                     datasets: [{
-                        label: 'Spotreba (GB)',
+                        label: 'Spotreba',
                         data: values,
                         backgroundColor: barColors,
                         borderRadius: 6
