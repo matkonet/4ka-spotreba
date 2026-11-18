@@ -49,7 +49,7 @@
             background-color: #1b263b;
             padding: 15px 20px;
             border-radius: 10px;
-            min-width: 160px;
+            min-width: 165px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         .card h3 { font-size: 11px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
@@ -76,7 +76,7 @@
         }
 
         .history-list {
-            max-width: 800px;
+            max-width: 820px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
@@ -104,6 +104,7 @@
             gap: 18px;
             font-size: 14px;
             color: #94a3b8;
+            flex-wrap: wrap;
         }
         .history-stats strong {
             color: #00b4d8;
@@ -127,22 +128,22 @@
         <button class="tab-btn" onclick="switchTab(event, 'tab-roky')">Roky</button>
     </div>
 
-    <!-- Aktuálny deň (najnovší) v hlavných kartách -->
+    <!-- Aktuálny týždeň + odpočet od 250 GB -->
     <div class="cards">
         <div class="card">
-            <h3>Dnes Download</h3>
+            <h3>Tento týždeň Download</h3>
             <div id="download-val" class="value">0.00 GB</div>
         </div>
         <div class="card">
-            <h3>Dnes Upload</h3>
+            <h3>Tento týždeň Upload</h3>
             <div id="upload-val" class="value">0.00 GB</div>
         </div>
         <div class="card">
-            <h3>Dnes Celkom</h3>
+            <h3>Tento týždeň Celkom</h3>
             <div id="total-val" class="value">0.00 GB</div>
         </div>
         <div class="card">
-            <h3>Zostáva z FUP (250 GB)</h3>
+            <h3>Zostáva z 250 GB</h3>
             <div id="fup-left" class="value">250.00 GB</div>
         </div>
     </div>
@@ -159,13 +160,13 @@
         <div class="section-title">Štatistika po dňoch (najnovší deň navrchu)</div>
         <div id="days-list" class="history-list"></div>
 
-        <div class="section-title">Týždenná štatistika (nuluje sa v pondelok o 0:00, minulosť ostáva)</div>
+        <div class="section-title">Týždenná štatistika (limit 250 GB, reset po nedeli, história ostáva)</div>
         <div id="weeks-list" class="history-list"></div>
     </div>
 
-    <!-- ZÁLOŽKA 3: Mesiace -->
+    <!-- ZÁLOŽKA 3: Mesiace (súčet týždňov za kalendárny mesiac) -->
     <div id="tab-mesiace" class="tab-content">
-        <div class="section-title">Mesačná štatistika</div>
+        <div class="section-title">Mesačná štatistika (súčet týždňov za kalendárny mesiac)</div>
         <div id="months-list" class="history-list"></div>
     </div>
 
@@ -194,7 +195,7 @@
             return d.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
         }
 
-        function renderList(containerId, items, labelFormatter) {
+        function renderList(containerId, items, labelFormatter, extraFormatter) {
             const container = document.getElementById(containerId);
             if (!items || items.length === 0) {
                 container.innerHTML = '<div class="history-row"><span class="history-label">Zatiaľ žiadne záznamy</span></div>';
@@ -205,6 +206,7 @@
                 const up = (parseFloat(item.upload_gb) || 0).toFixed(2);
                 const tot = (parseFloat(item.total_gb) || 0).toFixed(2);
                 const label = labelFormatter ? labelFormatter(item.key) : item.key;
+                const extra = extraFormatter ? extraFormatter(item) : '';
                 return `
                     <div class="history-row ${idx === 0 ? 'latest' : ''}">
                         <span class="history-label">${label}</span>
@@ -212,6 +214,7 @@
                             <span>Down: <strong>${down} GB</strong></span>
                             <span>Up: <strong>${up} GB</strong></span>
                             <span>Celkom: <strong>${tot} GB</strong></span>
+                            ${extra}
                         </div>
                     </div>
                 `;
@@ -267,29 +270,34 @@
                     const weeks = hist.weeks || [];
                     const months = hist.months || [];
                     const years = hist.years || [];
+                    const limit = parseFloat(hist.fup_limit_gb) || 250;
 
-                    // Dnešný deň je prvý (najnovší)
-                    const today = days[0] || { download_gb: 0, upload_gb: 0, total_gb: 0 };
-                    const down = parseFloat(today.download_gb) || 0;
-                    const up = parseFloat(today.upload_gb) || 0;
-                    const total = parseFloat(today.total_gb) || (down + up);
+                    // Aktuálny týždeň je prvý v zozname (najnovší)
+                    const curWeek = weeks[0] || { download_gb: 0, upload_gb: 0, total_gb: 0 };
+                    const wDown = parseFloat(curWeek.download_gb) || 0;
+                    const wUp = parseFloat(curWeek.upload_gb) || 0;
+                    const wTot = parseFloat(curWeek.total_gb) || (wDown + wUp);
+                    const rem = Math.max(0, limit - wTot);
 
-                    document.getElementById('download-val').innerText = down.toFixed(2) + " GB";
-                    document.getElementById('upload-val').innerText = up.toFixed(2) + " GB";
-                    document.getElementById('total-val').innerText = total.toFixed(2) + " GB";
-
-                    // Zostáva z FUP (napr. z aktuálneho mesiaca alebo dňa, tu z aktuálneho mesiaca)
-                    const curMonthTotal = months[0] ? (parseFloat(months[0].total_gb) || 0) : total;
-                    const limit = 250;
-                    const rem = Math.max(0, limit - curMonthTotal);
+                    document.getElementById('download-val').innerText = wDown.toFixed(2) + " GB";
+                    document.getElementById('upload-val').innerText = wUp.toFixed(2) + " GB";
+                    document.getElementById('total-val').innerText = wTot.toFixed(2) + " GB";
                     document.getElementById('fup-left').innerText = rem.toFixed(2) + " GB";
 
                     renderList('days-list', days, k => k);
-                    renderList('weeks-list', weeks, k => `Týždeň ${k}`);
+                    renderList(
+                        'weeks-list',
+                        weeks,
+                        k => `Týždeň ${k}`,
+                        item => {
+                            const t = parseFloat(item.total_gb) || 0;
+                            const left = Math.max(0, limit - t).toFixed(2);
+                            return `<span>Zostáva z ${limit} GB: <strong>${left} GB</strong></span>`;
+                        }
+                    );
                     renderList('months-list', months, formatMonthSk);
                     renderList('years-list', years, k => `Rok ${k}`);
 
-                    // Graf posledných dní (od najstaršieho po najnovší pre prirodzený priebeh)
                     const chartDays = [...days].slice(0, 14).reverse();
                     fupChart.data.labels = chartDays.map(d => d.key);
                     fupChart.data.datasets[0].data = chartDays.map(d => parseFloat(d.download_gb) || 0);
