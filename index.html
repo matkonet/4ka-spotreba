@@ -194,12 +194,12 @@
             const match = /^(\d{4})-W(\d{1,2})$/.exec(weekKey);
             if (!match) return weekKey;
 
-            const year = parseInt(match[1], 10);
+            const isoYear = parseInt(match[1], 10);
             const week = parseInt(match[2], 10);
 
-            const jan4 = new Date(year, 0, 4);
+            const jan4 = new Date(isoYear, 0, 4);
             const jan4Day = jan4.getDay() || 7;
-            const week1Monday = new Date(year, 0, 4 - (jan4Day - 1));
+            const week1Monday = new Date(isoYear, 0, 4 - (jan4Day - 1));
 
             const monday = new Date(week1Monday);
             monday.setDate(week1Monday.getDate() + (week - 1) * 7);
@@ -209,130 +209,14 @@
 
             const startDay = monday.getDate();
             const startMonth = monday.getMonth() + 1;
+            const startYear = monday.getFullYear();
+
             const endDay = sunday.getDate();
             const endMonth = sunday.getMonth() + 1;
+            const endYear = sunday.getFullYear();
 
-            if (startMonth === endMonth) {
-                return `${startDay}-${endDay}.${endMonth}`;
-            }
-            return `${startDay}.${startMonth} - ${endDay}.${endMonth}`;
-        }
-
-        function renderList(containerId, items, labelFormatter, extraFormatter) {
-            const container = document.getElementById(containerId);
-            if (!items || items.length === 0) {
-                container.innerHTML = '<div class="history-row"><span class="history-label">Zatiaľ žiadne záznamy</span></div>';
-                return;
-            }
-            container.innerHTML = items.map((item, idx) => {
-                const down = (parseFloat(item.download_gb) || 0).toFixed(2);
-                const up = (parseFloat(item.upload_gb) || 0).toFixed(2);
-                const tot = (parseFloat(item.total_gb) || 0).toFixed(2);
-                const label = labelFormatter ? labelFormatter(item.key) : item.key;
-                const extra = extraFormatter ? extraFormatter(item) : '';
-                return `
-                    <div class="history-row ${idx === 0 ? 'latest' : ''}">
-                        <span class="history-label">${label}</span>
-                        <div class="history-stats">
-                            <span>Down: <strong>${down} GB</strong></span>
-                            <span>Up: <strong>${up} GB</strong></span>
-                            <span>Celkom: <strong>${tot} GB</strong></span>
-                            ${extra}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        const ctx = document.getElementById('fupChart').getContext('2d');
-        const fupChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: 'Download (GB)',
-                        data: [],
-                        backgroundColor: '#00b4d8',
-                        borderRadius: 4
-                    },
-                    {
-                        label: 'Upload (GB)',
-                        data: [],
-                        backgroundColor: '#0077b6',
-                        borderRadius: 4
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: '#273853' }
-                    },
-                    x: {
-                        ticks: { color: '#94a3b8' },
-                        grid: { display: false }
-                    }
-                },
-                plugins: {
-                    legend: { labels: { color: '#e2e8f0' } }
+            if (startYear === endYear) {
+                if (startMonth === endMonth) {
+                    return `${startDay}-${endDay}.${endMonth}.${endYear}`;
                 }
-            }
-        });
-
-        function fetchData() {
-            const url = 'https://raw.githubusercontent.com/matkonet/4ka-spotreba/main/history.json?' + Date.now();
-
-            fetch(url)
-                .then(res => res.json())
-                .then(hist => {
-                    const days = hist.days || [];
-                    const weeks = hist.weeks || [];
-                    const months = hist.months || [];
-                    const years = hist.years || [];
-                    const limit = parseFloat(hist.fup_limit_gb) || 250;
-
-                    const curWeek = weeks[0] || { download_gb: 0, upload_gb: 0, total_gb: 0 };
-                    const wDown = parseFloat(curWeek.download_gb) || 0;
-                    const wUp = parseFloat(curWeek.upload_gb) || 0;
-                    const wTot = parseFloat(curWeek.total_gb) || (wDown + wUp);
-                    const rem = Math.max(0, limit - wTot);
-
-                    document.getElementById('download-val').innerText = wDown.toFixed(2) + " GB";
-                    document.getElementById('upload-val').innerText = wUp.toFixed(2) + " GB";
-                    document.getElementById('total-val').innerText = wTot.toFixed(2) + " GB";
-                    document.getElementById('fup-left').innerText = rem.toFixed(2) + " GB";
-
-                    renderList('days-list', days, k => k);
-                    renderList(
-                        'weeks-list',
-                        weeks,
-                        formatWeekDates,
-                        item => {
-                            const t = parseFloat(item.total_gb) || 0;
-                            const left = Math.max(0, limit - t).toFixed(2);
-                            return `<span>Zostáva z ${limit} GB: <strong>${left} GB</strong></span>`;
-                        }
-                    );
-                    renderList('months-list', months, formatMonthSk);
-                    renderList('years-list', years, k => `Rok ${k}`);
-
-                    const chartDays = [...days].slice(0, 14).reverse();
-                    fupChart.data.labels = chartDays.map(d => d.key);
-                    fupChart.data.datasets[0].data = chartDays.map(d => parseFloat(d.download_gb) || 0);
-                    fupChart.data.datasets[1].data = chartDays.map(d => parseFloat(d.upload_gb) || 0);
-                    fupChart.update();
-
-                    document.getElementById('update-time').innerText = "Posledná aktualizácia: " + (hist.timestamp || "Neznámy čas");
-                })
-                .catch(err => console.error("Chyba pri načítaní histórie:", err));
-        }
-
-        fetchData();
-        setInterval(fetchData, 30000);
-    </script>
-</body>
-</html>
+                return `${startDay}.${startMonth} - ${endDay}.${end
