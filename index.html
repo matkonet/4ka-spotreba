@@ -115,6 +115,9 @@
             font-size: 13px;
             color: #94a3b8;
         }
+        .error-text {
+            color: #ff6b6b !important;
+        }
     </style>
 </head>
 <body>
@@ -219,4 +222,146 @@
                 if (startMonth === endMonth) {
                     return `${startDay}-${endDay}.${endMonth}.${endYear}`;
                 }
-                return `${startDay}.${startMonth} - ${endDay}.${end
+                return `${startDay}.${startMonth} - ${endDay}.${endMonth}.${endYear}`;
+            }
+
+            return `${startDay}.${startMonth}.${startYear} - ${endDay}.${endMonth}.${endYear}`;
+        }
+
+        function renderList(containerId, items, labelFormatter, extraFormatter) {
+            const container = document.getElementById(containerId);
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="history-row"><span class="history-label">Zatiaľ žiadne záznamy</span></div>';
+                return;
+            }
+            container.innerHTML = items.map((item, idx) => {
+                const down = (parseFloat(item.download_gb) || 0).toFixed(2);
+                const up = (parseFloat(item.upload_gb) || 0).toFixed(2);
+                const tot = (parseFloat(item.total_gb) || 0).toFixed(2);
+                const label = labelFormatter ? labelFormatter(item.key) : item.key;
+                const extra = extraFormatter ? extraFormatter(item) : '';
+                return `
+                    <div class="history-row ${idx === 0 ? 'latest' : ''}">
+                        <span class="history-label">${label}</span>
+                        <div class="history-stats">
+                            <span>Down: <strong>${down} GB</strong></span>
+                            <span>Up: <strong>${up} GB</strong></span>
+                            <span>Celkom: <strong>${tot} GB</strong></span>
+                            ${extra}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        const ctx = document.getElementById('fupChart').getContext('2d');
+        const fupChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Download (GB)',
+                        data: [],
+                        backgroundColor: '#00b4d8',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Upload (GB)',
+                        data: [],
+                        backgroundColor: '#0077b6',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: '#273853' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } }
+                }
+            }
+        });
+
+        function fetchData() {
+            const url = 'https://raw.githubusercontent.com/matkonet/4ka-spotreba/main/history.json?' + Date.now();
+            const statusEl = document.getElementById('update-time');
+
+            fetch(url)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status} pri načítaní history.json`);
+                    }
+                    return res.text();
+                })
+                .then(rawText => {
+                    let hist;
+                    try {
+                        hist = JSON.parse(rawText);
+                    } catch (e) {
+                        throw new Error('Neplatný JSON v history.json');
+                    }
+
+                    statusEl.classList.remove('error-text');
+
+                    const days = hist.days || [];
+                    const weeks = hist.weeks || [];
+                    const months = hist.months || [];
+                    const years = hist.years || [];
+                    const limit = parseFloat(hist.fup_limit_gb) || 250;
+
+                    const curWeek = weeks[0] || { download_gb: 0, upload_gb: 0, total_gb: 0 };
+                    const wDown = parseFloat(curWeek.download_gb) || 0;
+                    const wUp = parseFloat(curWeek.upload_gb) || 0;
+                    const wTot = parseFloat(curWeek.total_gb) || (wDown + wUp);
+                    const rem = Math.max(0, limit - wTot);
+
+                    document.getElementById('download-val').innerText = wDown.toFixed(2) + " GB";
+                    document.getElementById('upload-val').innerText = wUp.toFixed(2) + " GB";
+                    document.getElementById('total-val').innerText = wTot.toFixed(2) + " GB";
+                    document.getElementById('fup-left').innerText = rem.toFixed(2) + " GB";
+
+                    renderList('days-list', days, k => k);
+                    renderList(
+                        'weeks-list',
+                        weeks,
+                        formatWeekDates,
+                        item => {
+                            const t = parseFloat(item.total_gb) || 0;
+                            const left = Math.max(0, limit - t).toFixed(2);
+                            return `<span>Zostáva z ${limit} GB: <strong>${left} GB</strong></span>`;
+                        }
+                    );
+                    renderList('months-list', months, formatMonthSk);
+                    renderList('years-list', years, k => `Rok ${k}`);
+
+                    const chartDays = [...days].slice(0, 14).reverse();
+                    fupChart.data.labels = chartDays.map(d => d.key);
+                    fupChart.data.datasets[0].data = chartDays.map(d => parseFloat(d.download_gb) || 0);
+                    fupChart.data.datasets[1].data = chartDays.map(d => parseFloat(d.upload_gb) || 0);
+                    fupChart.update();
+
+                    statusEl.innerText = "Posledná aktualizácia: " + (hist.timestamp || "Neznámy čas");
+                })
+                .catch(err => {
+                    console.error("Chyba pri načítaní histórie:", err);
+                    statusEl.classList.add('error-text');
+                    statusEl.innerText = "Chyba načítania: " + err.message;
+                });
+        }
+
+        fetchData();
+        setInterval(fetchData, 30000);
+    </script>
+</body>
+</html>
